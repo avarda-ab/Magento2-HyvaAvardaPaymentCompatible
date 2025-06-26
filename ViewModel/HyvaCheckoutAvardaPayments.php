@@ -29,7 +29,7 @@ class HyvaCheckoutAvardaPayments implements ArgumentInterface
         ConfigProviderInterface $avardaPartPaymentProvider,
         GetAprWidgetHtml $getAprWidgetHtml,
         SecureHtmlRenderer $secureHtmlRenderer,
-        Escaper $escaper
+        Escaper $escaper,
     ) {
         $this->invoice = $avardaInvoiceProvider;
         $this->directInvoice = $avardaDirectInvoiceProvider;
@@ -68,6 +68,12 @@ class HyvaCheckoutAvardaPayments implements ArgumentInterface
                     ' <a href="' . $config['terms_link'] . '" target="_blank" rel="noopener">(' . __('Terms') . ')</a>' .
                 '</span>';
         }
+
+        // Show warning on loan & partpayment if enabled in config
+        if (isset($config['show_loan_warning']) && $config['show_loan_warning']) {
+            $html .= $this->$instructor->getLoanWarningHtml();
+        }
+
         return $html;
     }
 
