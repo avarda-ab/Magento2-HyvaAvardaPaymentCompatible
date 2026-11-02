@@ -10,7 +10,6 @@ use Avarda\Payments\Model\Ui\PartPayment\ConfigProvider as PartPaymentConfigProv
 use Magento\Checkout\Model\ConfigProviderInterface;
 use Magento\Framework\Escaper;
 use Magento\Framework\View\Element\Block\ArgumentInterface;
-use Magento\Framework\View\Helper\SecureHtmlRenderer;
 
 class HyvaCheckoutAvardaPayments implements ArgumentInterface
 {
@@ -19,7 +18,6 @@ class HyvaCheckoutAvardaPayments implements ArgumentInterface
     protected ConfigProviderInterface $loan;
     protected ConfigProviderInterface $partPayment;
     protected GetAprWidgetHtml $getAprWidgetHtml;
-    protected SecureHtmlRenderer $secureHtmlRenderer;
     protected Escaper $escaper;
 
     public function __construct(
@@ -28,19 +26,17 @@ class HyvaCheckoutAvardaPayments implements ArgumentInterface
         ConfigProviderInterface $avardaLoanProvider,
         ConfigProviderInterface $avardaPartPaymentProvider,
         GetAprWidgetHtml $getAprWidgetHtml,
-        SecureHtmlRenderer $secureHtmlRenderer,
-        Escaper $escaper,
+        Escaper $escaper
     ) {
         $this->invoice = $avardaInvoiceProvider;
         $this->directInvoice = $avardaDirectInvoiceProvider;
         $this->loan = $avardaLoanProvider;
         $this->partPayment = $avardaPartPaymentProvider;
         $this->getAprWidgetHtml = $getAprWidgetHtml;
-        $this->secureHtmlRenderer = $secureHtmlRenderer;
         $this->escaper = $escaper;
     }
 
-    public function getTermsHtml($method): string
+    public function getTermsHtml(string $method): string
     {
         $instructor = $this->getInstructor($method);
         if (!$instructor) {
@@ -48,19 +44,14 @@ class HyvaCheckoutAvardaPayments implements ArgumentInterface
         }
         $config = $this->$instructor->getConfig()['payment']['instructions'][$method] ?? [];
         if ($config['apr_widget']['enabled']) {
+            // Magewire evals re-rendered <script> tags, which strict CSP blocks; apr-widget-loader.phtml loads it.
             $html = $this->getAprWidgetHtml->execute($method);
-            $html .= $this->secureHtmlRenderer->renderTag(
-                'script',
-                ['type' => 'text/javascript'],
-                'let s = document.createElement("script");' .
-                 's.src = "' . $config['apr_widget']['url'] . '";' .
-                 's.type = "text/javascript";' .
-                 's.dataset.paymentId = "' . $this->escaper->escapeJs($config['apr_widget']['paymentId']) . '";' .
-                 's.dataset.widgetJwt = "' . $this->escaper->escapeJs($config['apr_widget']['widgetJwt']) . '";' .
-                 's.dataset.customStyles = "' . $this->escaper->escapeJs($config['apr_widget']['styles']) . '";' .
-                 'document.head.appendChild(s);',
-                false
-            );
+            $html .= '<span hidden data-avarda-apr-widget' .
+                ' data-src="' . $this->escaper->escapeHtmlAttr($config['apr_widget']['url']) . '"' .
+                ' data-payment-id="' . $this->escaper->escapeHtmlAttr($config['apr_widget']['paymentId']) . '"' .
+                ' data-widget-jwt="' . $this->escaper->escapeHtmlAttr($config['apr_widget']['widgetJwt']) . '"' .
+                ' data-custom-styles="' . $this->escaper->escapeHtmlAttr($config['apr_widget']['styles']) . '"' .
+                '></span>';
         } else {
             $html = '<span class="instructions">' . $config['instructions'] . '</span><br><br>';
             $html .= '<span class="text-xs">' .
@@ -69,7 +60,6 @@ class HyvaCheckoutAvardaPayments implements ArgumentInterface
                 '</span>';
         }
 
-        // Show warning on loan & partpayment if enabled in config
         if (isset($config['show_loan_warning']) && $config['show_loan_warning']) {
             $html .= $this->$instructor->getLoanWarningHtml();
         }
@@ -77,7 +67,7 @@ class HyvaCheckoutAvardaPayments implements ArgumentInterface
         return $html;
     }
 
-    public function getInstructor($method): string
+    public function getInstructor(string $method): string
     {
         return match ($method) {
             InvoiceConfigProvider::CODE => 'invoice',

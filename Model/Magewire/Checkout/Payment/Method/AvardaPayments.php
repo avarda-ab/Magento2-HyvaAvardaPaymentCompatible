@@ -3,10 +3,6 @@
 namespace Avarda\HyvaAvardaPaymentCompatible\Model\Magewire\Checkout\Payment\Method;
 
 use Avarda\HyvaAvardaPaymentCompatible\ViewModel\HyvaCheckoutAvardaPayments;
-use Hyva\Checkout\Model\Magewire\Component\Evaluation\EvaluationResult;
-use Hyva\Checkout\Model\Magewire\Component\EvaluationInterface;
-use Hyva\Checkout\Model\Magewire\Component\EvaluationResultFactory;
-use Hyva\Checkout\Model\Magewire\Component\EvaluationResultInterface;
 use Magento\Checkout\Model\Session as SessionCheckout;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Exception\NoSuchEntityException;
@@ -14,12 +10,12 @@ use Magento\Quote\Api\CartRepositoryInterface;
 use Magewirephp\Magewire\Component\Form;
 use Rakit\Validation\Validator;
 
-class AvardaPayments extends Form implements EvaluationInterface
+class AvardaPayments extends Form
 {
     public ?string $socialSecurityNumber = null;
 
     protected $loader = [
-        'socialSecurityNumber' => 'Saving SSN',
+        'saveSocialSecurityNumber' => 'Saving SSN',
     ];
 
     protected $rules = [
@@ -57,9 +53,11 @@ class AvardaPayments extends Form implements EvaluationInterface
         $this->socialSecurityNumber = $additionalData ?? null;
     }
 
-    /**
-     * Listen for the Ssn to be updated.
-     */
+    public function saveSocialSecurityNumber(string $value): void
+    {
+        $this->socialSecurityNumber = $this->updatedSocialSecurityNumber(trim($value));
+    }
+
     public function updatedSocialSecurityNumber(string $value): ?string
     {
         $value = empty($value) ? null : $value;
@@ -76,24 +74,7 @@ class AvardaPayments extends Form implements EvaluationInterface
         return $value;
     }
 
-    /**
-     * Validate that ssn is set
-     *
-     * @param EvaluationResultFactory $resultFactory
-     * @return EvaluationResult
-     */
-    public function evaluateCompletion(EvaluationResultFactory $resultFactory): EvaluationResult
-    {
-        if ($this->socialSecurityNumber === null) {
-            return $resultFactory->createErrorMessageEvent()
-                ->withCustomEvent('payment:method:error')
-                ->withMessage('Social security number is a required field.');
-        }
-
-        return $resultFactory->createSuccess();
-    }
-
-    public function getTermsHtml($method): string
+    public function getTermsHtml(string $method): string
     {
         return $this->hyvaCheckoutAvardaPayments->getTermsHtml($method);
     }

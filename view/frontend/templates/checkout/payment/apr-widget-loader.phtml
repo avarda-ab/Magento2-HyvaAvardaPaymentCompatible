@@ -1,0 +1,25 @@
+<?php
+
+use Hyva\Theme\ViewModel\HyvaCsp;
+
+/** @var HyvaCsp $hyvaCsp */
+?>
+<script>
+    (() => {
+        const loadAprWidgets = () => {
+            document.querySelectorAll('[data-avarda-apr-widget]:not([data-loaded])').forEach(el => {
+                const script = document.createElement('script');
+                script.src = el.dataset.src;
+                script.dataset.paymentId = el.dataset.paymentId;
+                script.dataset.widgetJwt = el.dataset.widgetJwt;
+                script.dataset.customStyles = el.dataset.customStyles;
+                document.head.appendChild(script);
+                el.dataset.loaded = '1';
+            });
+        };
+
+        loadAprWidgets();
+        new MutationObserver(loadAprWidgets).observe(document.body, { childList: true, subtree: true });
+    })();
+</script>
+<?php $hyvaCsp->registerInlineScript() ?>
