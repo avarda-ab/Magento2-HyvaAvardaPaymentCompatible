@@ -1,0 +1,133 @@
+<?php
+
+use Hyva\Theme\ViewModel\HyvaCsp;
+use Magento\Framework\Escaper;
+use Magento\Framework\View\Element\Template;
+
+/** @var Template $block */
+/** @var Escaper $escaper */
+/** @var HyvaCsp $hyvaCsp */
+?>
+<dialog id="avarda-ssn-dialog"
+        class="hyva-checkout-modal w-screen md:max-w-lg text-start"
+        aria-labelledby="avarda-ssn-dialog-title"
+>
+    <form method="dialog" novalidate>
+        <div class="prose">
+            <h2 id="avarda-ssn-dialog-title" class="mt-0">
+                <?= $escaper->escapeHtml(__('Verification')) ?>
+            </h2>
+            <p>
+                <?= $escaper->escapeHtml(__('To pay with a credit payment method we need your Social Security Number.')) ?>
+            </p>
+        </div>
+        <div class="field mt-4">
+            <label for="avarda-ssn-input" class="label">
+                <?= $escaper->escapeHtml(__('Social Security Number')) ?>
+            </label>
+            <input id="avarda-ssn-input"
+                   type="text"
+                   autocomplete="off"
+                   required
+                   aria-describedby="avarda-ssn-error"
+                   class="form-input block w-full"
+            />
+            <ul id="avarda-ssn-error" class="messages" hidden>
+                <li><?= $escaper->escapeHtml(__('The SSN is a required field.')) ?></li>
+            </ul>
+        </div>
+        <div class="actions-toolbar mt-6">
+            <button type="button" class="btn btn-secondary" data-avarda-ssn-cancel>
+                <?= $escaper->escapeHtml(__('Cancel')) ?>
+            </button>
+            <button type="submit" class="btn btn-primary">
+                <?= $escaper->escapeHtml(__('Continue')) ?>
+            </button>
+        </div>
+    </form>
+</dialog>
+<script>
+    (() => {
+        const dialog = document.getElementById('avarda-ssn-dialog');
+        const form = dialog.querySelector('form');
+        const input = document.getElementById('avarda-ssn-input');
+        const error = document.getElementById('avarda-ssn-error');
+        let resolveDialog = null;
+
+        const showError = visible => {
+            error.hidden = ! visible;
+            input.closest('.field').classList.toggle('field-error', visible);
+            input.setAttribute('aria-invalid', visible ? 'true' : 'false');
+        };
+
+        const finish = result => {
+            dialog.close();
+            resolveDialog?.(result);
+            resolveDialog = null;
+        };
+
+        const cancel = event => {
+            event.preventDefault();
+            finish(null);
+        };
+
+        form.addEventListener('submit', event => {
+            event.preventDefault();
+            const ssn = input.value.trim();
+
+            if (! ssn) {
+                showError(true);
+                input.focus();
+                return;
+            }
+
+            finish(ssn);
+        });
+        dialog.addEventListener('cancel', cancel);
+        dialog.querySelector('[data-avarda-ssn-cancel]').addEventListener('click', cancel);
+
+        const askSocialSecurityNumber = value => new Promise(resolve => {
+            resolveDialog = resolve;
+            input.value = value || '';
+            showError(false);
+            dialog.showModal();
+            input.focus();
+        });
+
+        class SocialSecurityNumberCancelled extends Error {}
+
+        const methodCodes = <?= /* @noEscape */ json_encode(
+            array_values($block->getData('method_codes') ?? []),
+            JSON_HEX_TAG | JSON_HEX_AMP
+        ) ?>;
+
+        hyvaCheckout.api.priority(() => {
+            methodCodes.forEach(code => {
+                hyvaCheckout.payment.registerMethod({
+                    code: code,
+                    method: {
+                        async placeOrder({ fallback }) {
+                            const component = Magewire.find('checkout.payment.method.' + code);
+                            const ssn = await askSocialSecurityNumber(component.get('socialSecurityNumber'));
+
+                            if (! ssn) {
+                                throw new SocialSecurityNumberCancelled();
+                            }
+
+                            await component.call('saveSocialSecurityNumber', ssn);
+                            await fallback();
+                        },
+                        async handleException({ exception, fallback }) {
+                            if (exception instanceof SocialSecurityNumberCancelled) {
+                                return;
+                            }
+
+                            await fallback({ exception });
+                        }
+                    }
+                });
+            });
+        });
+    })();
+</script>
+<?php $hyvaCsp->registerInlineScript() ?>

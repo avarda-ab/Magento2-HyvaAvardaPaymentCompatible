@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
+    <body>
+        <referenceContainer name="hyva.checkout.api-v1.payment-methods">
+            <block name="avarda.payments.ssn-dialog"
+                   template="Avarda_HyvaAvardaPaymentCompatible::checkout/payment/ssn-dialog.phtml">
+                <arguments>
+                    <argument name="method_codes" xsi:type="array">
+                        <item name="invoice" xsi:type="string">avarda_payments_invoice</item>
+                        <item name="direct_invoice" xsi:type="string">avarda_payments_direct_invoice</item>
+                        <item name="loan" xsi:type="string">avarda_payments_loan</item>
+                        <item name="partpayment" xsi:type="string">avarda_payments_partpayment</item>
+                    </argument>
+                </arguments>
+            </block>
+            <block name="avarda.payments.apr-widget-loader"
+                   template="Avarda_HyvaAvardaPaymentCompatible::checkout/payment/apr-widget-loader.phtml"/>
+        </referenceContainer>
+    </body>
+</page>
