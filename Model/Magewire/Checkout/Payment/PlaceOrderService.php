@@ -15,7 +15,7 @@ class PlaceOrderService extends AbstractPlaceOrderService
     public function __construct(
         CartManagementInterface $cartManagement,
         RedirectInterface $redirect,
-        AbstractOrderData $orderData = null
+        ?AbstractOrderData $orderData = null,
     ) {
         parent::__construct($cartManagement, $orderData);
         $this->redirect = $redirect;
